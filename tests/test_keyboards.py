@@ -1,7 +1,7 @@
 import pytest
 from telegram import InlineKeyboardMarkup
 from telefiles.shares import Shares
-from telefiles.navigation import Location, parse_cb, CB_HOME, CB_UP
+from telefiles.navigation import Location, CB_HOME, CB_UP
 from telefiles.keyboards import build_share_picker, build_browser
 
 

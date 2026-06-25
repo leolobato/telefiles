@@ -15,7 +15,7 @@ def build_share_picker(shares: Shares) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows or [[InlineKeyboardButton("(no shares)", callback_data=CB_HOME)]])
 
 
-def build_browser(shares: Shares, loc: Location, page: int):
+def build_browser(shares: Shares, loc: Location, page: int) -> tuple[str, InlineKeyboardMarkup, list[str], list[str]]:
     dirs, files = list_entries(shares, loc)
     entries = [("d", d) for d in dirs] + [("f", f) for f in files]
     page_entries, page, total_pages = paginate(entries, page)

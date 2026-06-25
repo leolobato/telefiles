@@ -14,4 +14,4 @@ def test_build_application_registers_handlers(tmp_path):
     # at least one handler group registered
     assert app.handlers
     total = sum(len(hs) for hs in app.handlers.values())
-    assert total >= 5
+    assert total >= 9

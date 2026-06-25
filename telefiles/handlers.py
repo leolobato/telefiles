@@ -229,7 +229,7 @@ async def on_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     document = update.effective_message.document
     if document is None:
         return
-    if document.file_size and document.file_size > MAX_RECEIVE_BYTES:
+    if document.file_size is not None and document.file_size > MAX_RECEIVE_BYTES:
         await update.effective_message.reply_text(
             "⚠️ File too large to receive (max 20 MB)."
         )

@@ -31,6 +31,6 @@ class Shares:
         if relpath.startswith("/"):
             raise ShareError("absolute paths are not allowed")
         candidate = (root / relpath).resolve()
-        if candidate != root and not candidate.is_relative_to(root):
+        if not candidate.is_relative_to(root):
             raise ShareError("path escapes share root")
         return candidate

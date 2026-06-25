@@ -10,5 +10,5 @@ services:
       - ./config.yaml:/app/config.yaml:ro
       - ./data:/data
       # Mount each host share at the container path referenced in config.yaml, e.g.:
-      - /mnt/photos:/mnt/photos:ro      # read-only share
-      - /srv/docs:/srv/docs             # read-write share (allows upload)
+      # - /mnt/photos:/mnt/photos:ro      # read-only share
+      # - /srv/docs:/srv/docs             # read-write share (allows upload)
