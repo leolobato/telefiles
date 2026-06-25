@@ -29,7 +29,8 @@ class Auth:
         return user_id == self._admin_id
 
     def is_paired(self, user_id: int) -> bool:
-        return str(user_id) in self._allow
+        # The admin is always authorized — no need to /pair themselves.
+        return self.is_admin(user_id) or str(user_id) in self._allow
 
     def try_pair(self, user_id: int, username: str, code: str) -> bool:
         if not secrets.compare_digest(code, self._code):

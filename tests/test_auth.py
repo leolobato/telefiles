@@ -12,6 +12,14 @@ def test_admin_recognized(auth):
     assert not auth.is_admin(1)
 
 
+def test_admin_is_implicitly_paired(auth):
+    # The admin is authorized without ever calling /pair (not in the allowlist).
+    assert auth.is_paired(999)
+    assert "999" not in auth.users()
+    # a non-admin, non-paired user is still not authorized
+    assert not auth.is_paired(1)
+
+
 def test_pairing_adds_user_and_persists(auth, tmp_path):
     code = auth.pairing_code
     assert auth.try_pair(42, "alice", code) is True

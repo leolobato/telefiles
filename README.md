@@ -121,6 +121,8 @@ successful pairing; the admin can mint a new one with `/newcode`).
   for uploads. Larger files are rejected with a message.
 - The allowlist is persisted to `<DATA_DIR>/allowlist.json`. Keep this directory
   on a volume so pairings survive restarts.
+- The **admin** (`ADMIN_ID`) is always authorized and does not need to `/pair` —
+  the pairing flow is for granting access to other users.
 - All paired users have equal read/write access to all shares.
 
 See `docs/superpowers/specs/` and `docs/superpowers/plans/` for the full design
