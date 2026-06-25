@@ -13,43 +13,31 @@ def test_admin_recognized(auth):
 
 
 def test_admin_is_implicitly_paired(auth):
-    # The admin is authorized without ever calling /pair (not in the allowlist).
     assert auth.is_paired(999)
     assert "999" not in auth.users()
-    # a non-admin, non-paired user is still not authorized
     assert not auth.is_paired(1)
 
 
-def test_pairing_adds_user_and_persists(auth, tmp_path):
-    code = auth.pairing_code
-    assert auth.try_pair(42, "alice", code) is True
+def test_add_user_adds_and_persists(auth, tmp_path):
+    assert auth.add_user(42, "@alice") is True
     assert auth.is_paired(42)
-    # persisted across reload
+    assert auth.users()["42"] == "@alice"
     reloaded = Auth(tmp_path / "allow.json", admin_id=999)
     assert reloaded.is_paired(42)
 
 
-def test_wrong_code_rejected(auth):
-    assert auth.try_pair(42, "alice", "wrong") is False
-    assert not auth.is_paired(42)
+def test_add_user_duplicate_returns_false(auth):
+    assert auth.add_user(42, "@alice") is True
+    assert auth.add_user(42, "@alice") is False
 
 
-def test_code_is_single_use(auth):
-    code = auth.pairing_code
-    assert auth.try_pair(1, "a", code) is True
-    # same code no longer works for a second user
-    assert auth.try_pair(2, "b", code) is False
-
-
-def test_new_code_rotates(auth):
-    first = auth.pairing_code
-    second = auth.new_code()
-    assert first != second
-    assert auth.pairing_code == second
+def test_add_user_admin_returns_false(auth):
+    assert auth.add_user(999, "@boss") is False
+    assert "999" not in auth.users()
 
 
 def test_revoke(auth):
-    auth.try_pair(42, "alice", auth.pairing_code)
+    auth.add_user(42, "@alice")
     assert auth.revoke(42) is True
     assert not auth.is_paired(42)
     assert auth.revoke(42) is False
