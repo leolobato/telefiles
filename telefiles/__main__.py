@@ -21,17 +21,22 @@ def _load_dotenv(path: Path) -> None:
         os.environ.setdefault(key.strip(), value.strip())
 
 
-def main() -> None:
+def _configure_logging() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
+    # Silence the per-request "getUpdates 200 OK" lines; failures still log.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+def main() -> None:
+    _configure_logging()
     _load_dotenv(Path(".env"))
     config = load_config(dict(os.environ), Path("config.yaml"))
     app = build_application(config)
-    state = app.bot_data["state"]
     logging.getLogger("telefiles").info(
-        "Pairing code: %s  (send /pair <code> from Telegram)", state.auth.pairing_code
+        "telefiles started; use /pair (admin) to authorize users"
     )
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
