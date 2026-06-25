@@ -51,6 +51,7 @@ async def test_pair_with_wrong_code(tmp_path):
     ctx = make_context(state, args=["bad"])
     await cmd_pair(update, ctx)
     assert not state.auth.is_paired(42)
+    msg.reply_text.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -66,4 +67,32 @@ async def test_require_auth_blocks_unpaired(tmp_path):
     ctx = make_context(state)
     await handler(update, ctx)
     assert called["yes"] is False
+    msg.reply_text.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_admin_command_denied_for_non_admin(tmp_path):
+    from telefiles.handlers import cmd_newcode
+    state = make_state(tmp_path, admin_id=999)
+    # pair a non-admin user (id 42 != admin 999)
+    state.auth.try_pair(42, "alice", state.auth.pairing_code)
+    code_before = state.auth.pairing_code
+    update, msg = make_update(42)
+    ctx = make_context(state)
+    await cmd_newcode(update, ctx)
+    # body did not run: code unchanged, and a denial was sent
+    assert state.auth.pairing_code == code_before
+    msg.reply_text.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_admin_command_allowed_for_admin(tmp_path):
+    from telefiles.handlers import cmd_newcode
+    state = make_state(tmp_path, admin_id=999)
+    code_before = state.auth.pairing_code
+    update, msg = make_update(999)
+    ctx = make_context(state)
+    await cmd_newcode(update, ctx)
+    # admin rotates the code
+    assert state.auth.pairing_code != code_before
     msg.reply_text.assert_awaited()
