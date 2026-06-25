@@ -18,14 +18,13 @@ logger = logging.getLogger("telefiles")
 PUBLIC_COMMANDS = [
     BotCommand("start", "Open the share picker / browse"),
     BotCommand("cd", "Same as /start — browse shares"),
-    BotCommand("pair", "Pair with a code: /pair <code>"),
     BotCommand("upload", "Upload a file into the current folder"),
 ]
 
 # Full list shown only in the admin's chat (chat-scoped). Must cover every
 # registered command handler so autocomplete stays in sync with the bot.
 ADMIN_COMMANDS = PUBLIC_COMMANDS + [
-    BotCommand("newcode", "Rotate the pairing code"),
+    BotCommand("pair", "Authorize a user (opens the user picker)"),
     BotCommand("listusers", "List paired users"),
     BotCommand("revoke", "Remove a user: /revoke <user_id>"),
 ]
@@ -60,10 +59,10 @@ def build_application(config: Config) -> Application:
     app.add_handler(CommandHandler("cd", h.cmd_start))
     app.add_handler(CommandHandler("pair", h.cmd_pair))
     app.add_handler(CommandHandler("upload", h.cmd_upload))
-    app.add_handler(CommandHandler("newcode", h.cmd_newcode))
     app.add_handler(CommandHandler("listusers", h.cmd_listusers))
     app.add_handler(CommandHandler("revoke", h.cmd_revoke))
     app.add_handler(CallbackQueryHandler(h.on_callback))
+    app.add_handler(MessageHandler(filters.StatusUpdate.USERS_SHARED, h.on_users_shared))
     app.add_handler(MessageHandler(filters.Document.ALL, h.on_document))
     app.add_error_handler(_on_error)
 

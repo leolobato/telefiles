@@ -3,7 +3,10 @@ from __future__ import annotations
 import functools
 from dataclasses import dataclass, field
 
-from telegram import Update
+from telegram import (
+    KeyboardButton, KeyboardButtonRequestUsers,
+    ReplyKeyboardMarkup, ReplyKeyboardRemove, Update,
+)
 from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes
 
@@ -55,7 +58,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if not state.auth.is_paired(user_id):
         await update.effective_message.reply_text(
-            "👋 You are not paired. Send /pair <code> to get access."
+            "👋 You are not authorized. Ask the admin to grant you access."
         )
         return
     state.locations[user_id] = Location()
@@ -64,23 +67,59 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def cmd_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    state = _state(context)
-    user = update.effective_user
-    if not context.args:
-        await update.effective_message.reply_text("Usage: /pair <code>")
-        return
-    if state.auth.try_pair(user.id, user.username or "", context.args[0]):
-        await update.effective_message.reply_text("✅ Paired! Send /start to begin.")
-    else:
-        await update.effective_message.reply_text("❌ Invalid or expired code.")
+def _shared_user_label(shared_user) -> str:
+    if shared_user.username:
+        return f"@{shared_user.username}"
+    name = " ".join(p for p in (shared_user.first_name, shared_user.last_name) if p)
+    return name or ""
 
 
 @require_admin
-async def cmd_newcode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cmd_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    button = KeyboardButton(
+        "👤 Choose a user to authorize",
+        request_users=KeyboardButtonRequestUsers(
+            request_id=1,
+            user_is_bot=False,
+            max_quantity=10,
+            request_name=True,
+            request_username=True,
+        ),
+    )
+    await update.effective_message.reply_text(
+        "Tap the button to pick the user(s) to authorize:",
+        reply_markup=ReplyKeyboardMarkup(
+            [[button]], resize_keyboard=True, one_time_keyboard=True
+        ),
+    )
+
+
+@require_admin
+async def on_users_shared(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = _state(context)
-    code = state.auth.new_code()
-    await update.effective_message.reply_text(f"🔑 New pairing code: `{code}`", parse_mode="Markdown")
+    shared = update.effective_message.users_shared
+    users = list(shared.users) if shared else []
+    if not users:
+        await update.effective_message.reply_text(
+            "No users selected.", reply_markup=ReplyKeyboardRemove()
+        )
+        return
+    added, existing = [], []
+    for su in users:
+        label = _shared_user_label(su)
+        display = label or str(su.user_id)
+        if state.auth.add_user(su.user_id, label):
+            added.append(display)
+        else:
+            existing.append(display)
+    lines = []
+    if added:
+        lines.append("✅ Authorized: " + ", ".join(added))
+    if existing:
+        lines.append("ℹ️ Already authorized: " + ", ".join(existing))
+    await update.effective_message.reply_text(
+        "\n".join(lines), reply_markup=ReplyKeyboardRemove()
+    )
 
 
 @require_admin
