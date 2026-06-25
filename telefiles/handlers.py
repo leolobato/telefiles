@@ -11,6 +11,7 @@ from telefiles.auth import Auth
 from telefiles.config import Config
 from telefiles.keyboards import build_browser, build_share_picker
 from telefiles.navigation import Location, parse_cb, CB_UP, CB_HOME
+from telefiles.files import sanitize_filename, unique_path
 from telefiles.shares import ShareError
 
 
@@ -197,3 +198,49 @@ async def _send_file(query, state: BotState, loc: Location, name: str):
             await query.message.reply_document(document=fh, filename=name)
     except TelegramError:
         await query.message.reply_text("⚠️ Failed to send file.")
+
+
+MAX_RECEIVE_BYTES = 20 * 1024 * 1024
+
+
+@require_auth
+async def cmd_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    state = _state(context)
+    user_id = update.effective_user.id
+    loc = _loc(state, user_id)
+    if loc.share is None:
+        await update.effective_message.reply_text(
+            "Enter a share first with /start, then run /upload."
+        )
+        return
+    state.awaiting_upload.add(user_id)
+    display = loc.share if not loc.relpath else f"{loc.share}/{loc.relpath}"
+    await update.effective_message.reply_text(
+        f"📤 Send me a file now; it will be saved to {display}."
+    )
+
+
+@require_auth
+async def on_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    state = _state(context)
+    user_id = update.effective_user.id
+    if user_id not in state.awaiting_upload:
+        return
+    document = update.effective_message.document
+    if document is None:
+        return
+    if document.file_size and document.file_size > MAX_RECEIVE_BYTES:
+        await update.effective_message.reply_text(
+            "⚠️ File too large to receive (max 20 MB)."
+        )
+        return
+
+    loc = _loc(state, user_id)
+    directory = state.config.shares.resolve(loc.share, loc.relpath)
+    safe = sanitize_filename(document.file_name or "file")
+    dest = unique_path(directory, safe)
+
+    tg_file = await document.get_file()
+    await tg_file.download_to_drive(custom_path=str(dest))
+    state.awaiting_upload.discard(user_id)
+    await update.effective_message.reply_text(f"✅ Saved as {dest.name}")
