@@ -43,3 +43,9 @@ def test_callback_roundtrip():
     assert parse_cb(cb_page(2)) == ("p", "2")
     assert parse_cb(CB_UP) == ("up", "")
     assert parse_cb(CB_HOME) == ("home", "")
+
+
+def test_list_entries_picker_raises_shareerror(shares):
+    from telefiles.shares import ShareError
+    with pytest.raises(ShareError):
+        list_entries(shares, Location())

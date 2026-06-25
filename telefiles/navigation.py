@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from telefiles.shares import Shares
+from telefiles.shares import Shares, ShareError
 
 PAGE_SIZE = 20
 
@@ -18,7 +18,7 @@ class Location:
 
 def list_entries(shares: Shares, loc: Location) -> tuple[list[str], list[str]]:
     if loc.share is None:
-        raise ValueError("cannot list entries at the share picker")
+        raise ShareError("cannot list entries at the share picker")
     base = shares.resolve(loc.share, loc.relpath)
     dirs: list[str] = []
     files: list[str] = []
@@ -27,11 +27,12 @@ def list_entries(shares: Shares, loc: Location) -> tuple[list[str], list[str]]:
             dirs.append(child.name)
         else:
             files.append(child.name)
-    key = lambda s: s.lower()
-    return sorted(dirs, key=key), sorted(files, key=key)
+    def _key(s):
+        return s.lower()
+    return sorted(dirs, key=_key), sorted(files, key=_key)
 
 
-def paginate(items, page, page_size=PAGE_SIZE):
+def paginate(items: list, page: int, page_size: int = PAGE_SIZE) -> tuple[list, int, int]:
     total_pages = max(1, (len(items) + page_size - 1) // page_size)
     page = max(0, min(page, total_pages - 1))
     start = page * page_size
