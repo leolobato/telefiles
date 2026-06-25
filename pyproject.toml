@@ -26,4 +26,9 @@ include = ["telefiles*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+filterwarnings = [
+    # pytest-asyncio's own internals call a deprecated asyncio API on Python 3.14+
+    "ignore:'asyncio.get_event_loop_policy' is deprecated:DeprecationWarning",
+]
