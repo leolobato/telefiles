@@ -21,3 +21,11 @@ jailed directory shares. See `docs/superpowers/specs/` for the design.
 
 Mount a share read-only (`:ro`) to prevent uploads into it; mount read-write to
 allow `/upload`.
+
+## Commands
+
+- `/start` (or `/cd`) — open the share picker / browse
+- `/pair <code>` — pair using the code from the logs
+- `/upload` — upload a file into the current directory
+- Tap a 📄 file — download it
+- Admin only: `/newcode`, `/listusers`, `/revoke <user_id>`
