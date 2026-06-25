@@ -118,6 +118,33 @@ async def test_oversized_file_refused(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_descend_does_not_re_render_current_location(tmp_path):
+    """Tapping a directory must not first re-edit the message to the CURRENT
+    location (Telegram rejects an unchanged edit as 'Message is not modified',
+    which previously aborted the descend). It should edit only once — to the
+    child directory."""
+    state = build_state(tmp_path)
+    state.locations[42] = Location("S", "")
+    update, q = make_cb_update(42, cb_dir(0))  # tap "sub"
+    await on_callback(update, make_ctx(state))
+    assert state.locations[42].relpath == "sub"      # descended
+    assert q.edit_message_text.await_count == 1       # only the child render
+
+
+@pytest.mark.asyncio
+async def test_descend_survives_message_not_modified(tmp_path):
+    """Defense in depth: even if the API raises BadRequest('Message is not
+    modified') on the edit, navigation must succeed rather than crash."""
+    from telegram.error import BadRequest
+    state = build_state(tmp_path)
+    state.locations[42] = Location("S", "")
+    update, q = make_cb_update(42, cb_dir(0))
+    q.edit_message_text = AsyncMock(side_effect=BadRequest("Message is not modified"))
+    await on_callback(update, make_ctx(state))  # must not raise
+    assert state.locations[42].relpath == "sub"
+
+
+@pytest.mark.asyncio
 async def test_unauthorized_callback_denied(tmp_path):
     """A non-paired user's callback must be rejected at the auth gate."""
     state = build_state(tmp_path)

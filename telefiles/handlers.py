@@ -4,7 +4,7 @@ import functools
 from dataclasses import dataclass, field
 
 from telegram import Update
-from telegram.error import TelegramError
+from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes
 
 from telefiles.auth import Auth
@@ -118,9 +118,23 @@ def _loc(state: BotState, user_id: int) -> Location:
     return state.locations.setdefault(user_id, Location())
 
 
+def _page_entries(state: BotState, loc: Location):
+    """The directory/file names shown on the current page, in display order —
+    computed without touching the message, so it is safe to call before a
+    navigation action that will do the actual edit."""
+    _, _, page_dirs, page_files = build_browser(state.config.shares, loc, loc.page)
+    return page_dirs, page_files
+
+
 async def _render_browser(query, state: BotState, loc: Location):
     header, markup, page_dirs, page_files = build_browser(state.config.shares, loc, loc.page)
-    await query.edit_message_text(header, reply_markup=markup)
+    try:
+        await query.edit_message_text(header, reply_markup=markup)
+    except BadRequest as exc:
+        # Editing to identical content (e.g. re-tapping the current page) is
+        # harmless — Telegram rejects it with "Message is not modified".
+        if "not modified" not in str(exc).lower():
+            raise
     return page_dirs, page_files
 
 
@@ -166,8 +180,9 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if kind in ("d", "f"):
-            # recompute the page the buttons were drawn from to map index -> name
-            page_dirs, page_files = await _render_browser(query, state, loc)
+            # map the tapped index onto the page currently shown — without
+            # re-rendering it (that edit would be a no-op the API rejects).
+            page_dirs, page_files = _page_entries(state, loc)
             entries = page_dirs + page_files
             index = int(value)
             if index >= len(entries):
