@@ -12,6 +12,18 @@ def test_sanitize_empty_falls_back():
     assert sanitize_filename("/") == "file"
 
 
+def test_sanitize_strips_windows_backslash_components():
+    # Backslash-separated paths from Windows clients must not survive as path
+    # components on a POSIX host (directory-escape control).
+    assert sanitize_filename("a\\b\\c.txt") == "c.txt"
+    assert sanitize_filename("\\") == "file"
+
+
+def test_sanitize_strips_unsafe_characters():
+    assert sanitize_filename("bad<name>.txt") == "badname.txt"
+    assert sanitize_filename('a"b|c?.txt') == "abc.txt"
+
+
 def test_unique_path_no_collision(tmp_path):
     assert unique_path(tmp_path, "a.txt") == tmp_path / "a.txt"
 
