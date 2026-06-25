@@ -9,3 +9,15 @@ jailed directory shares. See `docs/superpowers/specs/` for the design.
     cp .env.example .env   # fill in BOT_TOKEN, ADMIN_ID
     # edit config.yaml with your shares
     python -m telefiles
+
+## Running with Docker
+
+1. Copy `config.yaml.example` to `config.yaml` and define your shares using the
+   container paths you will mount.
+2. Set `BOT_TOKEN` and `ADMIN_ID` in your environment or a `.env` file.
+3. Edit the share volume mounts in `docker-compose.yml` to match `config.yaml`.
+4. `docker compose up --build`
+5. Read the pairing code from the logs and send `/pair <code>` to the bot.
+
+Mount a share read-only (`:ro`) to prevent uploads into it; mount read-write to
+allow `/upload`.
