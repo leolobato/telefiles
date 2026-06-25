@@ -12,11 +12,11 @@ in Docker) and can be run directly with Python or via Docker.
 
 - Multiple named shares, each jailed to its own directory (no `..`, absolute-path,
   or symlink escapes)
-- Telegram-ID allowlist; new users pair with a one-time code printed to the logs
+- Telegram-ID allowlist; the admin authorizes users via Telegram's native user picker
 - Browse with `/cd` and inline buttons (directories, `..`, home, pagination)
 - Tap a file to download it (up to 50 MB)
 - `/upload` a file into the current directory (up to 20 MB)
-- Admin commands to rotate the pairing code and manage users
+- Admin commands to manage users
 
 ## 1. Create the bot in Telegram
 
@@ -43,8 +43,8 @@ The admin is identified by their numeric Telegram user ID, not their username.
 Get yours by messaging a bot such as [@userinfobot](https://t.me/userinfobot) —
 it replies with your ID (a number like `8431001234`). Use that as `ADMIN_ID`.
 
-The admin can always rotate the pairing code (`/newcode`) and manage users, and is
-the one who bootstraps the first pairing.
+The admin is **automatically authorized** — no pairing required. The admin is the
+only one who can authorize other users.
 
 ## 2. Configure
 
@@ -83,9 +83,10 @@ python -m pip install -e ".[dev]"
 python -m telefiles
 ```
 
-On startup the bot logs a **pairing code**. Anyone who sends `/pair <code>` to the
-bot is added to the allowlist (the code is single-use and rotates after each
-successful pairing; the admin can mint a new one with `/newcode`).
+The admin is automatically authorized. To grant access to another user, the admin
+sends **`/pair`**, taps the **"👤 Choose a user to authorize"** button, and selects
+the user(s) from Telegram's native picker; the chosen users are added to the
+allowlist.
 
 ### With Docker
 
@@ -96,12 +97,15 @@ successful pairing; the admin can mint a new one with `/newcode`).
    (they ship commented out). Mount a share read-only (`:ro`) to forbid uploads
    into it; mount read-write to allow `/upload`.
 4. `docker compose up --build`
-5. Read the pairing code from the logs and send `/pair <code>` to the bot.
+5. The admin is automatically authorized. To add another user, the admin sends
+   **`/pair`**, taps **"👤 Choose a user to authorize"**, and picks the user(s)
+   from Telegram's native picker.
 
 ## Using the bot
 
-1. Send `/start` to the bot, then `/pair <code>` using the code from the logs.
-2. `/start` (or `/cd`) again to open the share picker.
+1. The admin sends `/start` to open the share picker. Other users must be
+   authorized first (see the `/pair` flow below).
+2. `/start` (or `/cd`) to open the share picker.
 3. Tap a share, then navigate with the 📁 / `⬆️ ..` / 🏠 buttons.
 4. Tap a 📄 file to download it.
 5. Send `/upload` while inside a directory, then send the file — it is saved there.
@@ -109,20 +113,19 @@ successful pairing; the admin can mint a new one with `/newcode`).
 ### Commands
 
 - `/start` (or `/cd`) — open the share picker / browse
-- `/pair <code>` — pair using the code from the logs
+- `/pair` — (admin) authorize a user via the native user picker
 - `/upload` — upload a file into the current directory
 - Tap a 📄 file — download it
-- Admin only: `/newcode` (rotate the pairing code), `/listusers`,
-  `/revoke <user_id>`
+- Admin only: `/listusers`, `/revoke <user_id>`
 
 ## Notes & limits
 
 - File sizes are bounded by the cloud Bot API: **50 MB** for downloads, **20 MB**
   for uploads. Larger files are rejected with a message.
 - The allowlist is persisted to `<DATA_DIR>/allowlist.json`. Keep this directory
-  on a volume so pairings survive restarts.
-- The **admin** (`ADMIN_ID`) is always authorized and does not need to `/pair` —
-  the pairing flow is for granting access to other users.
+  on a volume so authorized users survive restarts.
+- The **admin** (`ADMIN_ID`) is always authorized and does not need to be added —
+  `/pair` is for granting access to other users.
 - All paired users have equal read/write access to all shares.
 
 See `docs/superpowers/specs/` and `docs/superpowers/plans/` for the full design

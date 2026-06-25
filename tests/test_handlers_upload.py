@@ -14,7 +14,7 @@ def build_state(tmp_path):
     shares = Shares({"S": str(tmp_path / "share")})
     cfg = Config(token="T", admin_id=1, data_dir=tmp_path, shares=shares)
     auth = Auth(tmp_path / "allow.json", admin_id=1)
-    auth.try_pair(42, "u", auth.pairing_code)
+    auth.add_user(42, "u")
     return BotState(config=cfg, auth=auth)
 
 

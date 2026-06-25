@@ -16,7 +16,7 @@ def build_state(tmp_path):
     shares = Shares({"S": str(tmp_path / "share")})
     cfg = Config(token="T", admin_id=1, data_dir=tmp_path, shares=shares)
     auth = Auth(tmp_path / "allow.json", admin_id=1)
-    auth.try_pair(42, "u", auth.pairing_code)
+    auth.add_user(42, "u")
     return BotState(config=cfg, auth=auth)
 
 
@@ -72,7 +72,7 @@ async def test_file_on_page1_maps_to_correct_entry(tmp_path):
     shares = Shares({"S2": str(share_root)})
     cfg = Config(token="T", admin_id=1, data_dir=tmp_path, shares=shares)
     auth = Auth(tmp_path / "allow2.json", admin_id=1)
-    auth.try_pair(42, "u", auth.pairing_code)
+    auth.add_user(42, "u")
     state = BotState(config=cfg, auth=auth)
 
     # Page 1 (0-indexed), file index 0 on that page = the 21st file in sorted order
@@ -99,7 +99,7 @@ async def test_oversized_file_refused(tmp_path):
     shares = Shares({"S": str(share_root)})
     cfg = Config(token="T", admin_id=1, data_dir=tmp_path, shares=shares)
     auth = Auth(tmp_path / "allow.json", admin_id=1)
-    auth.try_pair(42, "u", auth.pairing_code)
+    auth.add_user(42, "u")
     state = BotState(config=cfg, auth=auth)
     state.locations[42] = Location("S", "", page=0)
 

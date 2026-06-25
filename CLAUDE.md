@@ -38,17 +38,17 @@ Docker: `docker compose up --build` (edit the share volume mounts in `docker-com
 Layered, with pure logic deliberately kept free of the `telegram` dependency so it stays unit-testable. Data flows: Telegram update → `handlers` → pure logic (`shares`/`navigation`/`files`/`auth`) → filesystem.
 
 - **`shares.py` — the security chokepoint.** `Shares.resolve(share, relpath)` is the ONE place filesystem paths are produced. It resolves symlinks *before* an `is_relative_to` containment check, blocking `..`, absolute-path, and symlink escapes. **Every** file access (listing, download read, upload write) must route through it; never construct a filesystem path from user input any other way.
-- **`auth.py` + `storage.py`** — `Auth` holds the allowlist (persisted atomically as JSON via `storage`, temp-file + `os.replace`). Pairing codes are single-use (rotated on success) and compared with `secrets.compare_digest`. The startup pairing code is printed to the logs to bootstrap the first user.
+- **`auth.py` + `storage.py`** — `Auth` holds the allowlist (persisted atomically as JSON via `storage`, temp-file + `os.replace`). The admin (`ADMIN_ID`) is implicitly authorized; there is no pairing code. The admin authorizes other users via the native user picker (`/pair` → `users_shared` → `Auth.add_user`).
 - **`config.py`** — `Config` dataclass + `load_config`; wraps `ShareError` as `ConfigError`.
 - **`navigation.py`** — pure, Telegram-free: the `Location` dataclass (`share`, `relpath`, `page`), `list_entries`, `paginate`, and compact callback-data codecs (`cb_*`/`parse_cb`). Callback data encodes an **index**, not a path (Telegram's 64-byte callback_data limit).
 - **`keyboards.py`** — builds `InlineKeyboardMarkup` on top of `navigation`. `build_browser` returns `(header, markup, page_dirs, page_files)`; the button callback indices are positions into `page_dirs + page_files` for the displayed page.
 - **`handlers.py`** — all command/callback handlers + `BotState` (config, auth, per-user `locations`, `awaiting_upload`), stored on `application.bot_data["state"]`. `require_auth`/`require_admin` decorators gate every handler.
-- **`app.py` / `__main__.py`** — `build_application(config)` wires handlers and returns the app without starting; `main()` loads `.env`, builds config, logs the pairing code, runs polling.
+- **`app.py` / `__main__.py`** — `build_application(config)` wires handlers and returns the app without starting; `main()` loads `.env`, builds config, runs polling. Successful long-poll requests are not logged (failures only).
 
 ## Invariants to preserve when editing
 
 - **Jail:** all filesystem access goes through `shares.resolve`. Upload filenames are *also* run through `files.sanitize_filename` (strips path components) before joining — defense in depth.
-- **Auth:** unpaired users get a generic denial and learn nothing (no share/file names leaked). Admin commands are gated by `require_admin` independently of pairing.
+- **Auth:** unpaired users get a generic denial and learn nothing (no share/file names leaked). `/pair` is admin-only — gated by `require_admin`; `users_shared` updates are also gated. Admin commands are gated by `require_admin` independently of pairing.
 - **Size limits:** download refused if `> MAX_SEND_BYTES` (50 MB) before sending; upload refused if `> MAX_RECEIVE_BYTES` (20 MB) before any disk write. These are cloud Bot API limits — a self-hosted Bot API server is out of scope.
 - **Navigation index/page coupling:** a tapped button's index is mapped against the page actually displayed. The current page lives in `Location.page` and must be persisted on page (`p`) callbacks and reset to 0 on share-enter/up/descend — otherwise tapping an item on page >1 resolves the wrong entry. `tests/test_handlers_nav.py::test_file_on_page1_maps_to_correct_entry` guards this.
 
