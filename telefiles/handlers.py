@@ -117,8 +117,8 @@ def _loc(state: BotState, user_id: int) -> Location:
     return state.locations.setdefault(user_id, Location())
 
 
-async def _render_browser(query, state: BotState, loc: Location, page: int = 0):
-    header, markup, page_dirs, page_files = build_browser(state.config.shares, loc, page)
+async def _render_browser(query, state: BotState, loc: Location):
+    header, markup, page_dirs, page_files = build_browser(state.config.shares, loc, loc.page)
     await query.edit_message_text(header, reply_markup=markup)
     return page_dirs, page_files
 
@@ -159,7 +159,9 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if kind == "p":
-            await _render_browser(query, state, loc, page=int(value))
+            loc = Location(loc.share, loc.relpath, page=int(value))
+            state.locations[user_id] = loc
+            await _render_browser(query, state, loc)
             return
 
         if kind in ("d", "f"):

@@ -14,6 +14,7 @@ CB_HOME = "home"
 class Location:
     share: str | None = None
     relpath: str = ""
+    page: int = 0
 
 
 def list_entries(shares: Shares, loc: Location) -> tuple[list[str], list[str]]:
