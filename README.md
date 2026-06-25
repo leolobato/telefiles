@@ -130,3 +130,7 @@ allowlist.
 
 See `docs/superpowers/specs/` and `docs/superpowers/plans/` for the full design
 and implementation plan, and `CLAUDE.md` for development guidance.
+
+## License
+
+Released under the [MIT License](LICENSE).
