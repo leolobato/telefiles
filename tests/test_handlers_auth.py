@@ -6,7 +6,7 @@ from telefiles.auth import Auth
 from telefiles.config import Config
 from telefiles.shares import Shares
 from telefiles.handlers import (
-    BotState, cmd_pair, on_users_shared, require_auth,
+    BotState, cmd_pair, on_users_shared, require_auth, _shared_user_label,
 )
 
 
@@ -96,3 +96,19 @@ async def test_users_shared_denied_for_non_admin(tmp_path):
     )
     await on_users_shared(update, make_context(state))
     assert not state.auth.is_paired(7)  # not added
+    msg.reply_text.assert_awaited()
+
+
+def test_shared_user_label_fallbacks():
+    assert _shared_user_label(
+        SimpleNamespace(username="bob", first_name="B", last_name="X")
+    ) == "@bob"
+    assert _shared_user_label(
+        SimpleNamespace(username=None, first_name="Bob", last_name="Lee")
+    ) == "Bob Lee"
+    assert _shared_user_label(
+        SimpleNamespace(username=None, first_name="Bob", last_name=None)
+    ) == "Bob"
+    assert _shared_user_label(
+        SimpleNamespace(username=None, first_name=None, last_name=None)
+    ) == ""
