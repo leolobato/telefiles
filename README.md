@@ -32,8 +32,10 @@ You need a **bot token** (which API to talk to) and your **numeric user ID**
    `123456789:AAEhBOweik6ad...`. This is your `BOT_TOKEN` — keep it secret.
 
 Optional, via BotFather: `/setprivacy` → **Disable** so the bot reliably receives
-uploaded documents in group contexts (not needed for one-on-one chats), and
-`/setcommands` to register the command list for autocomplete.
+uploaded documents in group contexts (not needed for one-on-one chats). You do
+**not** need `/setcommands` — the bot publishes its command menu automatically on
+startup (public commands for everyone, plus the admin-only commands scoped to the
+admin's chat).
 
 ### Find your numeric user ID (for `ADMIN_ID`)
 
