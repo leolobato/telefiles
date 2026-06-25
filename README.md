@@ -90,14 +90,35 @@ allowlist.
 
 ### With Docker
 
+A prebuilt image is published to the GitHub Container Registry on every release:
+`ghcr.io/leolobato/telefiles` (tagged `latest` and per version, e.g. `v0.2.0`).
+
 1. Create `config.yaml` defining your shares using the **container** paths you
-   will mount.
-2. Set `BOT_TOKEN` and `ADMIN_ID` in your environment or `.env`.
-3. Edit the share volume mounts in `docker-compose.yml` to match `config.yaml`
-   (they ship commented out). Mount a share read-only (`:ro`) to forbid uploads
-   into it; mount read-write to allow `/upload`.
-4. `docker compose up --build`
-5. The admin is automatically authorized. To add another user, the admin sends
+   will mount, and set `BOT_TOKEN` and `ADMIN_ID` in a `.env` file alongside it.
+2. Create a `docker-compose.yml` using the published image:
+
+   ```yaml
+   services:
+     telefiles:
+       image: ghcr.io/leolobato/telefiles:latest
+       restart: unless-stopped
+       environment:
+         BOT_TOKEN: ${BOT_TOKEN}
+         ADMIN_ID: ${ADMIN_ID}
+         DATA_DIR: /data
+       volumes:
+         - ./config.yaml:/app/config.yaml:ro
+         - ./data:/data
+         # Mount each host share at the container path referenced in config.yaml, e.g.:
+         # - /mnt/photos:/mnt/photos:ro      # read-only share
+         # - /srv/docs:/srv/docs             # read-write share (allows upload)
+   ```
+
+   Mount a share read-only (`:ro`) to forbid uploads into it; mount read-write to
+   allow `/upload`. Pin a specific version (e.g. `:v0.2.0`) instead of `latest`
+   for reproducible deploys.
+3. `docker compose pull && docker compose up -d`
+4. The admin is automatically authorized. To add another user, the admin sends
    **`/pair`**, taps **"👤 Choose a user to authorize"**, and picks the user(s)
    from Telegram's native picker.
 
