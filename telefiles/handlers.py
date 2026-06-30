@@ -295,6 +295,22 @@ async def on_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     dest = unique_path(directory, safe)
 
     tg_file = await document.get_file()
-    await tg_file.download_to_drive(custom_path=str(dest))
+    # The upload attempt is over either way — don't leave the user stuck mid-upload.
     state.awaiting_upload.discard(user_id)
+    try:
+        await tg_file.download_to_drive(custom_path=str(dest))
+    except PermissionError:
+        await update.effective_message.reply_text(
+            "⚠️ Upload failed: permission denied writing to this folder."
+        )
+        return
+    except OSError as exc:
+        reason = exc.strerror or str(exc)
+        await update.effective_message.reply_text(f"⚠️ Upload failed: {reason}.")
+        return
+    except TelegramError:
+        await update.effective_message.reply_text(
+            "⚠️ Upload failed: could not download the file."
+        )
+        return
     await update.effective_message.reply_text(f"✅ Saved as {dest.name}")

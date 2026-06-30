@@ -88,3 +88,29 @@ async def test_document_rejected_when_too_large(tmp_path):
     update, msg = make_update(42, document=document)
     await on_document(update, make_ctx(state))
     assert not (tmp_path / "share" / "big.bin").exists()
+
+
+@pytest.mark.asyncio
+async def test_document_write_failure_reports_error(tmp_path):
+    state = build_state(tmp_path)
+    state.locations[42] = Location("S", "")
+    state.awaiting_upload.add(42)
+
+    tg_file = MagicMock()
+    tg_file.download_to_drive = AsyncMock(
+        side_effect=PermissionError(13, "Permission denied")
+    )
+
+    document = MagicMock()
+    document.file_name = "doc.pdf"
+    document.file_size = 10
+    document.get_file = AsyncMock(return_value=tg_file)
+
+    update, msg = make_update(42, document=document)
+    await on_document(update, make_ctx(state))
+
+    # the user is told the upload failed, not left in silence
+    msg.reply_text.assert_awaited_once()
+    assert "fail" in msg.reply_text.await_args.args[0].lower()
+    # awaiting state is cleared so they are not stuck mid-upload
+    assert 42 not in state.awaiting_upload
