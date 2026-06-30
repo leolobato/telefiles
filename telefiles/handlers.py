@@ -24,6 +24,10 @@ class BotState:
     auth: Auth
     locations: dict[int, Location] = field(default_factory=dict)
     awaiting_upload: set[int] = field(default_factory=set)
+    # user_id -> media_group_id of the batch currently being received, so every
+    # file of a multi-file send is accepted (not just the one that consumed the
+    # one-shot awaiting_upload flag).
+    active_upload_groups: dict[int, str] = field(default_factory=dict)
 
 
 def _state(context: ContextTypes.DEFAULT_TYPE) -> BotState:
@@ -268,6 +272,7 @@ async def cmd_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     state.awaiting_upload.add(user_id)
+    state.active_upload_groups.pop(user_id, None)
     display = loc.share if not loc.relpath else f"{loc.share}/{loc.relpath}"
     await update.effective_message.reply_text(
         f"📤 Send me a file now; it will be saved to {display}."
@@ -278,11 +283,22 @@ async def cmd_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def on_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = _state(context)
     user_id = update.effective_user.id
-    if user_id not in state.awaiting_upload:
+    message = update.effective_message
+    media_group_id = message.media_group_id
+    in_active_group = (
+        media_group_id is not None
+        and state.active_upload_groups.get(user_id) == media_group_id
+    )
+    if user_id not in state.awaiting_upload and not in_active_group:
         return
-    document = update.effective_message.document
+    document = message.document
     if document is None:
         return
+    # A multi-file send arrives as one update per file, all sharing a
+    # media_group_id. Remember the group so its later files are accepted even
+    # after the first consumes the one-shot awaiting flag below.
+    if media_group_id is not None:
+        state.active_upload_groups[user_id] = media_group_id
     if document.file_size is not None and document.file_size > MAX_RECEIVE_BYTES:
         await update.effective_message.reply_text(
             "⚠️ File too large to receive (max 20 MB)."

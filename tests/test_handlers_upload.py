@@ -18,14 +18,29 @@ def build_state(tmp_path):
     return BotState(config=cfg, auth=auth)
 
 
-def make_update(user_id, document=None):
+def make_update(user_id, document=None, media_group_id=None):
     msg = MagicMock()
     msg.reply_text = AsyncMock()
     msg.document = document
+    msg.media_group_id = media_group_id
     update = MagicMock()
     update.effective_user.id = user_id
     update.effective_message = msg
     return update, msg
+
+
+def make_document(name, size=10):
+    tg_file = MagicMock()
+
+    async def fake_download(custom_path):
+        Path(custom_path).write_text("data")
+
+    tg_file.download_to_drive = AsyncMock(side_effect=fake_download)
+    document = MagicMock()
+    document.file_name = name
+    document.file_size = size
+    document.get_file = AsyncMock(return_value=tg_file)
+    return document
 
 
 def make_ctx(state):
@@ -74,6 +89,24 @@ async def test_document_saved_to_current_dir(tmp_path):
 
     saved = tmp_path / "share" / "evil.txt"
     assert saved.exists()
+    assert 42 not in state.awaiting_upload
+
+
+@pytest.mark.asyncio
+async def test_media_group_saves_every_file(tmp_path):
+    # Sending several files at once: Telegram delivers one update per file,
+    # all sharing a media_group_id. Every file must be saved, not just the first.
+    state = build_state(tmp_path)
+    state.locations[42] = Location("S", "")
+    state.awaiting_upload.add(42)
+    ctx = make_ctx(state)
+
+    for name in ("a.txt", "b.txt", "c.txt"):
+        update, _ = make_update(42, document=make_document(name), media_group_id="g1")
+        await on_document(update, ctx)
+
+    for name in ("a.txt", "b.txt", "c.txt"):
+        assert (tmp_path / "share" / name).exists()
     assert 42 not in state.awaiting_upload
 
 
