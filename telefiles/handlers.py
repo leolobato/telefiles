@@ -71,6 +71,23 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+@require_auth
+async def cmd_refresh(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    state = _state(context)
+    loc = _loc(state, update.effective_user.id)
+    if loc.share is None:
+        await update.effective_message.reply_text(
+            "📂 Choose a share:", reply_markup=build_share_picker(state.config.shares)
+        )
+        return
+    try:
+        await _send_browser(update.effective_message, state, loc)
+    except ShareError:
+        await update.effective_message.reply_text(
+            "⚠️ That folder is no longer available. Use /start."
+        )
+
+
 def _shared_user_label(shared_user) -> str:
     if shared_user.username:
         return f"@{shared_user.username}"
@@ -166,6 +183,12 @@ def _page_entries(state: BotState, loc: Location):
     computed without touching the message, so it is safe to call before a
     navigation action that will do the actual edit."""
     _, _, page_dirs, page_files = build_browser(state.config.shares, loc, loc.page)
+    return page_dirs, page_files
+
+
+async def _send_browser(message, state: BotState, loc: Location):
+    header, markup, page_dirs, page_files = build_browser(state.config.shares, loc, loc.page)
+    await message.reply_text(header, reply_markup=markup)
     return page_dirs, page_files
 
 
