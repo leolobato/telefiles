@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import functools
+import os
+import tempfile
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from telegram import (
     KeyboardButton, KeyboardButtonRequestUsers,
@@ -14,7 +18,7 @@ from telefiles.auth import Auth
 from telefiles.config import Config
 from telefiles.keyboards import build_browser, build_share_picker
 from telefiles.navigation import Location, parse_cb, CB_UP, CB_HOME
-from telefiles.files import sanitize_filename, unique_path
+from telefiles.files import build_zip, sanitize_filename, unique_path
 from telefiles.shares import ShareError
 
 
@@ -282,6 +286,42 @@ async def _send_file(query, state: BotState, loc: Location, name: str):
 
 
 MAX_RECEIVE_BYTES = 20 * 1024 * 1024
+
+
+@require_auth
+async def cmd_zip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    state = _state(context)
+    loc = _loc(state, update.effective_user.id)
+    message = update.effective_message
+    if loc.share is None:
+        await message.reply_text("Enter a share first with /start, then run /zip.")
+        return
+    try:
+        directory = state.config.shares.resolve(loc.share, loc.relpath)
+    except ShareError:
+        await message.reply_text("⚠️ That folder is no longer available. Use /start.")
+        return
+
+    base = loc.relpath.split("/")[-1] if loc.relpath else loc.share
+    name = f"{sanitize_filename(base)}.zip"
+    fd, tmp_name = tempfile.mkstemp(suffix=".zip")
+    os.close(fd)
+    tmp = Path(tmp_name)
+    try:
+        count = await asyncio.to_thread(build_zip, directory, tmp)
+        if count == 0:
+            await message.reply_text("📂 Folder is empty, nothing to zip.")
+            return
+        if tmp.stat().st_size > MAX_SEND_BYTES:
+            await message.reply_text("⚠️ Zip too large for Telegram (max 50 MB).")
+            return
+        try:
+            with tmp.open("rb") as fh:
+                await message.reply_document(document=fh, filename=name)
+        except TelegramError:
+            await message.reply_text("⚠️ Failed to send the zip.")
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 @require_auth

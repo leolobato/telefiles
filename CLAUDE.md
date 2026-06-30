@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Telegram bot (`python-telegram-bot` v21, long polling) for browsing, uploading, and downloading files from multiple configured, **jailed** directory "shares". Only paired users may use it. MVP scope is exactly four operations — list, `/cd`, `/upload`, tap-to-download — and nothing destructive (no delete/rename/mkdir).
+A Telegram bot (`python-telegram-bot` v21, long polling) for browsing, uploading, and downloading files from multiple configured, **jailed** directory "shares". Only paired users may use it. Operations are read/append only — list, `/cd`, `/refresh`, `/upload`, tap-to-download, and `/zip` (download a folder) — and nothing destructive (no delete/rename/mkdir).
 
 ## Environment & commands
 

@@ -20,6 +20,7 @@ PUBLIC_COMMANDS = [
     BotCommand("cd", "Same as /start — browse shares"),
     BotCommand("upload", "Upload a file into the current folder"),
     BotCommand("refresh", "Reload the current folder"),
+    BotCommand("zip", "Download the current folder as a .zip"),
 ]
 
 # Full list shown only in the admin's chat (chat-scoped). Must cover every
@@ -61,6 +62,7 @@ def build_application(config: Config) -> Application:
     app.add_handler(CommandHandler("pair", h.cmd_pair))
     app.add_handler(CommandHandler("upload", h.cmd_upload))
     app.add_handler(CommandHandler("refresh", h.cmd_refresh))
+    app.add_handler(CommandHandler("zip", h.cmd_zip))
     app.add_handler(CommandHandler("listusers", h.cmd_listusers))
     app.add_handler(CommandHandler("revoke", h.cmd_revoke))
     app.add_handler(CallbackQueryHandler(h.on_callback))
